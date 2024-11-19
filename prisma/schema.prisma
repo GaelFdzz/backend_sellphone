@@ -1,0 +1,112 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Roles {
+  Id_Rol   Int       @id @default(autoincrement())
+  Nombre   String
+  Usuarios Usuarios[]
+}
+
+model Usuarios {
+  Id_Usuario       Int       @id @default(autoincrement())
+  Nombre           String
+  Apellido         String
+  Correo           String    @unique
+  Contrasena_Hash  String
+  Id_Rol           Int?
+  Rol              Roles?    @relation(fields: [Id_Rol], references: [Id_Rol])
+  Productos        Productos[]
+  Pedidos          Pedidos[]
+  Pagos            Pagos[]
+  UsuariosAuditoria UsuariosAuditoria[]
+}
+
+model Categorias {
+  Id_Categoria Int        @id @default(autoincrement())
+  Nombre       String
+  Productos    Productos[]
+}
+
+model Productos {
+  Id_Producto Int                  @id @default(autoincrement())
+  Nombre      String
+  Descripcion String?
+  Precio      Decimal @db.Decimal(10, 2)
+  Stock       Int
+  Id_Usuario  Int?
+  Id_Categoria Int?
+  Usuario     Usuarios?            @relation(fields: [Id_Usuario], references: [Id_Usuario])
+  Categoria   Categorias?          @relation(fields: [Id_Categoria], references: [Id_Categoria])
+  Publicaciones Publicaciones[]
+  Calificaciones CalificacionProductos[]
+  DetallesPedidos DetallePedidos[]
+}
+
+model Publicaciones {
+  Id_Publicacion Int         @id @default(autoincrement())
+  Titulo         String
+  Descripcion    String?
+  Fecha_Publicacion DateTime
+  Id_Producto    Int?
+  Producto       Productos? @relation(fields: [Id_Producto], references: [Id_Producto])
+}
+
+model CalificacionProductos {
+  Id_Calificacion Int         @id @default(autoincrement())
+  Puntuacion      Int
+  Comentario      String?
+  Fecha_Calificacion DateTime
+  Id_Producto    Int?
+  Producto       Productos? @relation(fields: [Id_Producto], references: [Id_Producto])
+}
+
+model Pagos {
+  Id_Pago    Int       @id @default(autoincrement())
+  Fecha_Pago DateTime
+  Monto      Decimal @db.Decimal(10, 2)
+  Metodo_Pago String
+  Id_Usuario  Int
+  Usuario     Usuarios @relation(fields: [Id_Usuario], references: [Id_Usuario])
+  Pedido      Pedidos[]
+}
+
+model Pedidos {
+  Id_Pedido  Int         @id @default(autoincrement())
+  Fecha_Pedido DateTime
+  Estado     String
+  Id_Usuario  Int
+  Id_Pago     Int?
+  Usuario     Usuarios @relation(fields: [Id_Usuario], references: [Id_Usuario])
+  Pago        Pagos?    @relation(fields: [Id_Pago], references: [Id_Pago])
+  Detalles    DetallePedidos[]
+}
+
+model DetallePedidos {
+  Id_Detalle Int        @id @default(autoincrement())
+  Cantidad   Int
+  Precio     Decimal @db.Decimal(10, 2)
+  Id_Pedido  Int
+  Id_Producto Int
+  Pedido     Pedidos @relation(fields: [Id_Pedido], references: [Id_Pedido])
+  Producto   Productos @relation(fields: [Id_Producto], references: [Id_Producto])
+}
+
+model UsuariosAuditoria {
+  Id_Auditoria Int        @id @default(autoincrement())
+  Id_Usuario   Int
+  Cambio       String
+  Fecha_Cambio DateTime @default(now())
+  Usuario      Usuarios @relation(fields: [Id_Usuario], references: [Id_Usuario])
+}
