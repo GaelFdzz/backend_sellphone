@@ -45,6 +45,7 @@ model Productos {
   Descripcion String?
   Precio      Decimal @db.Decimal(10, 2)
   Stock       Int
+  Imagen      String?
   Id_Usuario  Int?
   Id_Categoria Int?
   Usuario     Usuarios?            @relation(fields: [Id_Usuario], references: [Id_Usuario])
