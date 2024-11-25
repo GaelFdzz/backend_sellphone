@@ -8,7 +8,7 @@ export class ProductosService {
   async obtenerProductos() {
     return this.prisma.productos.findMany({
       include: {
-        Categoria: true,
+        categorias: true,
       },
     });
   }
