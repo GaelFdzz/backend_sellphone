@@ -148,7 +148,7 @@ model roles {
   Id_Rol   Int        @id @default(autoincrement())
   Nombre   String     @db.VarChar(255)
   usuarios usuarios[]
-}
+} 
 
 model usuarios {
   Id_Usuario             Int                      @id @default(autoincrement())
