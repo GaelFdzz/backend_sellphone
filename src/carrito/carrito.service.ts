@@ -54,30 +54,34 @@ export class CarritoService {
 
 
   async agregarProductoAlCarrito(Id_Usuario: number, productos: any[]) {
-    // Verifica si 'productos' es un arreglo
     if (!Array.isArray(productos)) {
       throw new HttpException('Los productos deben ser un arreglo', HttpStatus.BAD_REQUEST);
     }
 
+    const productosValidos = productos.filter(
+      (producto) =>
+        typeof producto.Id_Producto === 'number' &&
+        typeof producto.Cantidad === 'number' &&
+        typeof producto.Precio === 'number'
+    );
+
+    if (productosValidos.length === 0) {
+      throw new HttpException('No hay productos válidos para agregar al carrito', HttpStatus.BAD_REQUEST);
+    }
+
     const carrito = await this.prisma.carrito.findFirst({
-      where: {
-        Id_Usuario: Number(Id_Usuario),
-      },
-      include: {
-        detalles_carrito: true,
-      },
+      where: { Id_Usuario },
+      include: { detalles_carrito: true },
     });
 
-    // Si no existe un carrito, crearlo
     if (!carrito) {
       throw new HttpException('Carrito no encontrado', HttpStatus.NOT_FOUND);
     }
 
-    // Crear los detalles del carrito para cada producto
-    const detallesCarrito = productos.map((producto) => ({
+    const detallesCarrito = productosValidos.map((producto) => ({
       Id_Carrito: carrito.Id_Carrito,
       Id_Producto: producto.Id_Producto,
-      Cantidad: producto.Cantidad || 1,
+      Cantidad: producto.Cantidad,
       Precio: producto.Precio,
     }));
 
@@ -95,6 +99,7 @@ export class CarritoService {
       );
     }
   }
+
 
 
 
