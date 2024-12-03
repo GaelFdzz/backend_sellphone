@@ -156,12 +156,12 @@ model usuarios {
   Apellido               String                   @db.VarChar(255)
   Correo                 String                   @unique(map: "Correo") @db.VarChar(320)
   Contrasena             String                   @db.VarChar(255)
-  Id_Rol                 Int?
+  Id_Rol                 Int
   calificacion_productos calificacion_productos[]
   carrito                carrito[]
   pagos                  pagos[]
   pedidos                pedidos[]
-  roles                  roles?                   @relation(fields: [Id_Rol], references: [Id_Rol], onDelete: NoAction, onUpdate: NoAction, map: "usuarios_ibfk_1")
+  roles                  roles                   @relation(fields: [Id_Rol], references: [Id_Rol], onDelete: NoAction, onUpdate: NoAction, map: "usuarios_ibfk_1")
 
   @@index([Id_Rol], map: "Id_Rol")
   @@index([Apellido], map: "idx_usuario_apellido")

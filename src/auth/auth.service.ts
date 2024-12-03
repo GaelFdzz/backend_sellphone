@@ -3,13 +3,14 @@ import { CreateAuthDto } from './dto/create-auth.dto';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
+import { UnauthorizedException } from '@nestjs/common';
 
 @Injectable()
 export class AuthService {
   constructor(
     private jwtService: JwtService,
     private prismaService: PrismaService,
-  ) {}
+  ) { }
 
   // Método de login
   async login(createAuthDto: CreateAuthDto) {
@@ -18,17 +19,40 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new Error('Usuario no encontrado');
+      throw new UnauthorizedException('Usuario no encontrado');
     }
 
-    // Verificar si la contraseña es correcta
-    const passwordMatches = await bcrypt.compare(createAuthDto.password, user.Contrasena);
+    console.log('Usuario encontrado:', user); // Verificar usuario encontrado
+
+    let passwordMatches = false; // Inicializar la comparación como falsa
+
+    // Limpia las contraseñas para evitar errores de formato (elimina espacios)
+    const inputPassword = createAuthDto.password.trim();
+    const storedPassword = user.Contrasena.trim();
+
+    console.log('Contraseña de entrada:', inputPassword);
+    console.log('Contraseña almacenada:', storedPassword);
+
+    // Verificar si la contraseña está cifrada con bcrypt
+    if (this.isPasswordHashed(storedPassword)) {
+      console.log('Comparando contraseña cifrada...');
+      // Contraseña cifrada, usar bcrypt para comparar
+      passwordMatches = await bcrypt.compare(inputPassword, storedPassword);
+    } else {
+      // Contraseña en texto plano, comparar directamente
+      console.log('Comparando contraseña en texto plano...');
+      passwordMatches = inputPassword === storedPassword;
+    }
+
+    console.log('Resultado de comparación:', passwordMatches);
+
     if (!passwordMatches) {
-      throw new Error('Contraseña incorrecta');
+      throw new UnauthorizedException('Contraseña incorrecta');
     }
 
-    // Crear payload con información relevante para el token
-    const payload = { sub: user.Id_Usuario, email: user.Correo };
+    // Generar el JWT con los datos del usuario
+    const payload = { sub: user.Id_Usuario, email: user.Correo, role: user.Id_Rol };
+
     return {
       access_token: this.jwtService.sign(payload),
     };
@@ -41,18 +65,19 @@ export class AuthService {
     });
 
     if (userExists) {
-      throw new Error('El correo ya está registrado');
+      throw new UnauthorizedException('El correo ya está registrado');
     }
 
-    // Hash de la contraseña antes de guardarla
+    // Cifrado de la contraseña
     const hashedPassword = await bcrypt.hash(createAuthDto.password, 10);
 
     const newUser = await this.prismaService.usuarios.create({
       data: {
-        Nombre: createAuthDto.name,  // Asegúrate de pasar 'name' desde el DTO
-        Correo: createAuthDto.email,  // Asegúrate de pasar 'email' desde el DTO
-        Apellido: createAuthDto.apellido,  // Pasar 'apellido' desde el DTO
-        Contrasena: hashedPassword,  // Asegúrate de pasar la contraseña hasheada
+        Nombre: createAuthDto.name,
+        Correo: createAuthDto.email,
+        Apellido: createAuthDto.apellido,
+        Contrasena: hashedPassword,
+        Id_Rol: 2, // Asignamos rol por defecto (Cliente)
       },
     });
 
@@ -60,5 +85,10 @@ export class AuthService {
       message: 'Usuario registrado correctamente',
       user: newUser,
     };
+  }
+
+  // Función para verificar si la contraseña está cifrada
+  private isPasswordHashed(password: string): boolean {
+    return password.startsWith('$2a$') || password.startsWith('$2b$') || password.startsWith('$2y$');
   }
 }

@@ -11,5 +11,5 @@ export class CreateAuthDto {
   name: string;
 
   @IsNotEmpty()
-  apellido: string;  // Agregar el campo 'Apellido'
+  apellido: string;
 }
