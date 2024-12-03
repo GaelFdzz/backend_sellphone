@@ -14,44 +14,72 @@ export class ProductosService {
   }
 
   async obtenerProductoPorId(id: number) {
-    console.log('Buscando producto con ID:', id);
-
-    if (isNaN(id)) {
-      throw new Error('El ID debe ser un número válido');
-    }
-
     const producto = await this.prisma.productos.findUnique({
-      where: {
-        Id_Producto: id,
-      },
+      where: { Id_Producto: id },
       include: { categorias: true, resenas: true },
     });
 
     if (!producto) {
       throw new NotFoundException('Producto no encontrado');
     }
-
-    console.log('Producto encontrado:', producto);
     return producto;
   }
 
-  // productos.service.ts
   async obtenerResenasPorProducto(id: number) {
-    console.log('ID recibido:', id);
-    console.log('Tipo de ID:', typeof id);
-
     const resenas = await this.prisma.resenas.findMany({
-      where: {
-        Id_Producto: id,
-      },
-      orderBy: {
-        Fecha: 'desc',
-      },
+      where: { Id_Producto: id },
+      orderBy: { Fecha: 'desc' },
     });
-
     return resenas;
   }
 
+  async crearProducto(data: any) {
+    return this.prisma.productos.create({
+      data: {
+        Nombre: data.Nombre,
+        Descripcion: data.Descripcion,
+        Precio: parseFloat(data.Precio),
+        Stock: parseInt(data.Stock, 10),
+        Id_Categoria: parseInt(data.Categoria, 10) || null,
+        Imagen: data.Imagen ? data.Imagen : null, // Verifica si hay imagen
+      },
+    });
+  }
 
+  async actualizarProducto(id: number, data: any) {
+    const productoExistente = await this.prisma.productos.findUnique({
+      where: { Id_Producto: id },
+    });
 
+    if (!productoExistente) {
+      throw new NotFoundException('Producto no encontrado');
+    }
+
+    return this.prisma.productos.update({
+      where: { Id_Producto: id },
+      data: {
+        Nombre: data.Nombre,
+        Descripcion: data.Descripcion,
+        Precio: parseFloat(data.Precio),
+        Stock: parseInt(data.Stock, 10),
+        Id_Categoria: parseInt(data.Categoria, 10) || null,
+        Imagen: data.Imagen || null, // Verifica si hay imagen
+      },
+    });
+  }
+
+  async eliminarProducto(id: number) {
+    // Verificar si el producto existe antes de eliminarlo
+    const productoExistente = await this.prisma.productos.findUnique({
+      where: { Id_Producto: id },
+    });
+
+    if (!productoExistente) {
+      throw new NotFoundException('Producto no encontrado');
+    }
+
+    return this.prisma.productos.delete({
+      where: { Id_Producto: id },
+    });
+  }
 }
