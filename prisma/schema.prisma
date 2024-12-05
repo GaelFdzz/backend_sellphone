@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,101 +7,168 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Roles {
-  Id_Rol   Int       @id @default(autoincrement())
-  Nombre   String
-  Usuarios Usuarios[]
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model calificacion_productos {
+  Id_Calificacion Int        @id @default(autoincrement())
+  Puntuacion      Int?
+  Comentario      String?    @db.Text
+  Id_Producto     Int?
+  Id_Usuario      Int?
+  productos       productos? @relation(fields: [Id_Producto], references: [Id_Producto], onDelete: NoAction, onUpdate: NoAction, map: "calificacion_productos_ibfk_1")
+  usuarios        usuarios?  @relation(fields: [Id_Usuario], references: [Id_Usuario], onDelete: NoAction, onUpdate: NoAction, map: "calificacion_productos_ibfk_2")
+
+  @@index([Id_Producto], map: "Id_Producto")
+  @@index([Id_Usuario], map: "Id_Usuario")
 }
 
-model Usuarios {
-  Id_Usuario       Int       @id @default(autoincrement())
-  Nombre           String
-  Apellido         String
-  Correo           String    @unique
-  Contrasena_Hash  String
-  Id_Rol           Int?
-  Rol              Roles?    @relation(fields: [Id_Rol], references: [Id_Rol])
-  Productos        Productos[]
-  Pedidos          Pedidos[]
-  Pagos            Pagos[]
-  UsuariosAuditoria UsuariosAuditoria[]
+model carrito {
+  Id_Carrito       Int                @id @default(autoincrement())
+  Id_Usuario       Int
+  Fecha_Creacion   DateTime?          @default(now()) @db.DateTime(0)
+  Estado           carrito_Estado?    @default(activo)
+  usuarios         usuarios           @relation(fields: [Id_Usuario], references: [Id_Usuario], onDelete: NoAction, onUpdate: NoAction, map: "carrito_ibfk_1")
+  detalles_carrito detalles_carrito[]
+
+  @@index([Id_Usuario], map: "Id_Usuario")
 }
 
-model Categorias {
-  Id_Categoria Int        @id @default(autoincrement())
-  Nombre       String
-  Productos    Productos[]
+model categorias {
+  Id_Categoria Int         @id @default(autoincrement())
+  Nombre       String      @db.VarChar(255)
+  productos    productos[]
 }
 
-model Productos {
-  Id_Producto Int                  @id @default(autoincrement())
-  Nombre      String
-  Descripcion String?
-  Precio      Decimal @db.Decimal(10, 2)
-  Stock       Int
-  Imagen      String?
-  Id_Usuario  Int?
-  Id_Categoria Int?
-  Usuario     Usuarios?            @relation(fields: [Id_Usuario], references: [Id_Usuario])
-  Categoria   Categorias?          @relation(fields: [Id_Categoria], references: [Id_Categoria])
-  Publicaciones Publicaciones[]
-  Calificaciones CalificacionProductos[]
-  DetallesPedidos DetallePedidos[]
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model detalle_pedidos {
+  Id_Detalle  Int        @id @default(autoincrement())
+  Cantidad    Int?
+  Precio      Decimal?   @db.Decimal(10, 2)
+  Id_Pedido   Int?
+  Id_Producto Int?
+  pedidos     pedidos?   @relation(fields: [Id_Pedido], references: [Id_Pedido], onDelete: NoAction, onUpdate: NoAction, map: "detalle_pedidos_ibfk_1")
+  productos   productos? @relation(fields: [Id_Producto], references: [Id_Producto], onDelete: NoAction, onUpdate: NoAction, map: "detalle_pedidos_ibfk_2")
+
+  @@index([Id_Pedido], map: "Id_Pedido")
+  @@index([Id_Producto], map: "Id_Producto")
 }
 
-model Publicaciones {
-  Id_Publicacion Int         @id @default(autoincrement())
-  Titulo         String
-  Descripcion    String?
-  Fecha_Publicacion DateTime
-  Id_Producto    Int?
-  Producto       Productos? @relation(fields: [Id_Producto], references: [Id_Producto])
+model detalles_carrito {
+  Id_Detalle_Carrito Int       @id @default(autoincrement())
+  Id_Carrito         Int
+  Id_Producto        Int
+  Cantidad           Int
+  Precio             Decimal   @db.Decimal(10, 2)
+  carrito            carrito   @relation(fields: [Id_Carrito], references: [Id_Carrito], onDelete: NoAction, onUpdate: NoAction, map: "detalles_carrito_ibfk_1")
+  productos          productos @relation(fields: [Id_Producto], references: [Id_Producto], onDelete: NoAction, onUpdate: NoAction, map: "detalles_carrito_ibfk_2")
+
+  @@index([Id_Carrito], map: "Id_Carrito")
+  @@index([Id_Producto], map: "Id_Producto")
 }
 
-model CalificacionProductos {
-  Id_Calificacion Int         @id @default(autoincrement())
-  Puntuacion      Int
-  Comentario      String?
-  Fecha_Calificacion DateTime
-  Id_Producto    Int?
-  Producto       Productos? @relation(fields: [Id_Producto], references: [Id_Producto])
+model mensajes {
+  Id_Mensaje         Int       @id @default(autoincrement())
+  Nombre             String    @db.VarChar(255)
+  Correo_Electronico String    @db.VarChar(320)
+  Asunto             String    @db.VarChar(255)
+  Mensaje            String    @db.Text
+  Fecha_Recibido     DateTime? @default(now()) @db.Timestamp(0)
 }
 
-model Pagos {
+model pagos {
   Id_Pago    Int       @id @default(autoincrement())
-  Fecha_Pago DateTime
-  Monto      Decimal @db.Decimal(10, 2)
-  Metodo_Pago String
-  Id_Usuario  Int
-  Usuario     Usuarios @relation(fields: [Id_Usuario], references: [Id_Usuario])
-  Pedido      Pedidos[]
+  Monto      Decimal   @db.Decimal(10, 2)
+  Fecha_Pago DateTime  @db.Date
+  Id_Usuario Int?
+  usuarios   usuarios? @relation(fields: [Id_Usuario], references: [Id_Usuario], onDelete: NoAction, onUpdate: NoAction, map: "pagos_ibfk_1")
+  pedidos    pedidos[]
+
+  @@index([Id_Usuario], map: "Id_Usuario")
 }
 
-model Pedidos {
-  Id_Pedido  Int         @id @default(autoincrement())
-  Fecha_Pedido DateTime
-  Estado     String
-  Id_Usuario  Int
-  Id_Pago     Int?
-  Usuario     Usuarios @relation(fields: [Id_Usuario], references: [Id_Usuario])
-  Pago        Pagos?    @relation(fields: [Id_Pago], references: [Id_Pago])
-  Detalles    DetallePedidos[]
+model pedidos {
+  Id_Pedido       Int               @id @default(autoincrement())
+  Fecha_Pedido    DateTime          @db.Date
+  Estado          String            @db.VarChar(255)
+  Id_Usuario      Int?
+  Id_Pago         Int?
+  Total_Precio    Decimal?          @db.Decimal(10, 2)
+  detalle_pedidos detalle_pedidos[]
+  usuarios        usuarios?         @relation(fields: [Id_Usuario], references: [Id_Usuario], onDelete: NoAction, onUpdate: NoAction, map: "pedidos_ibfk_1")
+  pagos           pagos?            @relation(fields: [Id_Pago], references: [Id_Pago], onDelete: NoAction, onUpdate: NoAction, map: "pedidos_ibfk_2")
+
+  @@index([Id_Pago], map: "Id_Pago")
+  @@index([Id_Usuario], map: "Id_Usuario")
 }
 
-model DetallePedidos {
-  Id_Detalle Int        @id @default(autoincrement())
-  Cantidad   Int
-  Precio     Decimal @db.Decimal(10, 2)
-  Id_Pedido  Int
-  Id_Producto Int
-  Pedido     Pedidos @relation(fields: [Id_Pedido], references: [Id_Pedido])
-  Producto   Productos @relation(fields: [Id_Producto], references: [Id_Producto])
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model productos {
+  Id_Producto            Int                      @id @default(autoincrement())
+  Nombre                 String                   @db.VarChar(255)
+  Descripcion            String?                  @db.Text
+  Precio                 Decimal?                 @db.Decimal(10, 2)
+  Stock                  Int?
+  Id_Categoria           Int?
+  Imagen                 String?                  @db.VarChar(255)
+  calificacion_productos calificacion_productos[]
+  detalle_pedidos        detalle_pedidos[]
+  detalles_carrito       detalles_carrito[]
+  categorias             categorias?              @relation(fields: [Id_Categoria], references: [Id_Categoria], onDelete: NoAction, onUpdate: NoAction, map: "productos_ibfk_1")
+  publicaciones          publicaciones[]
+  resenas                resenas[]
+
+  @@index([Id_Categoria], map: "Id_Categoria")
+  @@index([Nombre], map: "idx_productos_nombre")
 }
 
-model UsuariosAuditoria {
-  Id_Auditoria Int        @id @default(autoincrement())
-  Id_Usuario   Int
-  Cambio       String
-  Fecha_Cambio DateTime @default(now())
-  Usuario      Usuarios @relation(fields: [Id_Usuario], references: [Id_Usuario])
+model publicaciones {
+  Id_Publicacion    Int        @id @default(autoincrement())
+  Titulo            String     @db.VarChar(255)
+  Descripcion       String?    @db.Text
+  Fecha_Publicacion DateTime   @db.Date
+  Id_Producto       Int?
+  productos         productos? @relation(fields: [Id_Producto], references: [Id_Producto], onDelete: NoAction, onUpdate: NoAction, map: "publicaciones_ibfk_1")
+
+  @@index([Id_Producto], map: "Id_Producto")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model resenas {
+  Id_Resena    Int       @id @default(autoincrement())
+  Id_Producto  Int
+  Usuario      String    @db.VarChar(255)
+  Comentario   String    @db.Text
+  Calificacion Int
+  Fecha        DateTime  @default(now()) @db.DateTime(0)
+  productos    productos @relation(fields: [Id_Producto], references: [Id_Producto], onDelete: NoAction, onUpdate: NoAction, map: "resenas_ibfk_1")
+
+  @@index([Id_Producto], map: "idx_resenas_producto")
+}
+
+model roles {
+  Id_Rol   Int        @id @default(autoincrement())
+  Nombre   String     @db.VarChar(255)
+  usuarios usuarios[]
+}
+
+model usuarios {
+  Id_Usuario             Int                      @id @default(autoincrement())
+  Nombre                 String                   @db.VarChar(255)
+  Apellido               String                   @db.VarChar(255)
+  Correo                 String                   @unique(map: "Correo") @db.VarChar(320)
+  Contrasena             String                   @db.VarChar(255)
+  Id_Rol                 Int?
+  calificacion_productos calificacion_productos[]
+  carrito                carrito[]
+  pagos                  pagos[]
+  pedidos                pedidos[]
+  roles                  roles?                   @relation(fields: [Id_Rol], references: [Id_Rol], onDelete: NoAction, onUpdate: NoAction, map: "usuarios_ibfk_1")
+
+  @@index([Id_Rol], map: "Id_Rol")
+  @@index([Apellido], map: "idx_usuario_apellido")
+  @@index([Nombre], map: "idx_usuario_nombre")
+}
+
+enum carrito_Estado {
+  activo
+  finalizado
 }
