@@ -105,8 +105,8 @@ model productos {
   Id_Producto            Int                      @id @default(autoincrement())
   Nombre                 String                   @db.VarChar(255)
   Descripcion            String?                  @db.Text
-  Precio                 Decimal?                 @db.Decimal(10, 2)
-  Stock                  Int?
+  Precio                 Decimal                 @db.Decimal(10, 2)
+  Stock                  Int
   Id_Categoria           Int?
   Imagen                 String?                  @db.VarChar(255)
   calificacion_productos calificacion_productos[]
