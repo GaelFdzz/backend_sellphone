@@ -1,145 +1,156 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { PrismaService } from 'src/prisma/prisma.service'; // Asegúrate de tener el PrismaService configurado
 import { Prisma } from '@prisma/client';
 
 @Injectable()
-
 export class CarritoService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) { }
 
-
-
-  // Método para obtener el carrito de un usuario
-  // Método para obtener el carrito de un usuario
-  async obtenerCarrito(Id_Usuario: number) {
-    try {
-      let carrito = await this.prisma.carrito.findFirst({
-        where: {
-          Id_Usuario: Number(Id_Usuario),
-        },
-        include: {
-          detalles_carrito: {
-            include: {
-              productos: true,
-            },
-          },
-        },
-      });
-
-      if (!carrito) {
-        carrito = await this.prisma.carrito.create({
-          data: {
-            Id_Usuario: Number(Id_Usuario),
-            detalles_carrito: {
-              create: [], // Crea el carrito vacío inicialmente
-            },
-          },
-          include: {
-            detalles_carrito: {
-              include: {
-                productos: true,
-              },
-            },
-          },
-        });
-      }
-
-      return carrito;
-    } catch (error) {
-      console.error('Error al obtener el carrito:', error);
-      throw new HttpException('Error al obtener el carrito', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-
-  async agregarProductoAlCarrito(Id_Usuario: number, productos: any[]) {
-    // Verifica si 'productos' es un arreglo
-    if (!Array.isArray(productos)) {
-      throw new HttpException('Los productos deben ser un arreglo', HttpStatus.BAD_REQUEST);
-    }
-
-    const carrito = await this.prisma.carrito.findFirst({
+  // Crear carrito solo si no existe uno activo
+  async createCart(userId: number) {
+    const existingCart = await this.prisma.carrito.findFirst({
       where: {
-        Id_Usuario: Number(Id_Usuario),
-      },
-      include: {
-        detalles_carrito: true,
+        Id_Usuario: userId,
+        Estado: 'activo',
       },
     });
 
-    // Si no existe un carrito, crearlo
-    if (!carrito) {
-      throw new HttpException('Carrito no encontrado', HttpStatus.NOT_FOUND);
+    if (existingCart) {
+      return existingCart;
     }
 
-    // Crear los detalles del carrito para cada producto
-    const detallesCarrito = productos.map((producto) => ({
-      Id_Carrito: carrito.Id_Carrito,
-      Id_Producto: producto.Id_Producto,
-      Cantidad: producto.Cantidad || 1,
-      Precio: producto.Precio,
-    }));
+    return this.prisma.carrito.create({
+      data: {
+        Id_Usuario: userId,
+        Estado: 'activo',
+      },
+    });
+  }
 
-    try {
-      await this.prisma.detalles_carrito.createMany({
-        data: detallesCarrito,
-      });
+  async getCartItems(userId: number) {
+    const userIdNumber = Number(userId); // Asegúrate de que el userId es un número
 
-      return { message: 'Productos agregados al carrito correctamente' };
-    } catch (error) {
-      console.error('Error al agregar productos al carrito:', error);
-      throw new HttpException(
-        `Error al agregar productos al carrito: ${error.message || 'Desconocido'}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+    if (isNaN(userIdNumber)) {
+      throw new Error('El ID del usuario no es válido');
     }
+
+    return this.prisma.carrito.findFirst({
+      where: {
+        Id_Usuario: userIdNumber,  // Aquí pasa el valor directamente sin ningún objeto adicional
+        Estado: 'activo',
+      },
+      include: {
+        detalles_carrito: {
+          include: {
+            productos: true,
+          },
+        },
+      },
+    });
   }
 
 
 
+  async addProductToCart(userId: number, productId: number, quantity: number) {
+    const userIdNumber = Number(userId);
+    const cart = await this.prisma.carrito.findFirst({
+      where: {
+        Id_Usuario: userIdNumber,
+        Estado: 'activo',
+      },
+    });
 
-  // Método para eliminar un producto del carrito
-  async eliminarProducto(Id_Usuario: number, Id_Producto: number) {
-    try {
-      // Buscar el carrito del usuario
-      const carrito = await this.prisma.carrito.findFirst({
-        where: { Id_Usuario },
-        include: {
-          detalles_carrito: true, // Incluir los detalles del carrito
+    if (!cart) {
+      throw new Error('Carrito no encontrado');
+    }
+
+    const existingProduct = await this.prisma.detalles_carrito.findFirst({
+      where: {
+        Id_Carrito: cart.Id_Carrito,
+        Id_Producto: productId,
+      },
+    });
+
+    if (existingProduct) {
+      return this.prisma.detalles_carrito.update({
+        where: { Id_Detalle_Carrito: existingProduct.Id_Detalle_Carrito },
+        data: {
+          Cantidad: existingProduct.Cantidad + quantity,
         },
       });
-
-      // Verificar si el carrito existe
-      if (!carrito) {
-        throw new HttpException('Carrito no encontrado', HttpStatus.NOT_FOUND);
-      }
-
-      // Buscar el detalle del producto a eliminar
-      const detalleCarrito = carrito.detalles_carrito.find(
-        (detalle) => detalle.Id_Producto === Id_Producto,
-      );
-
-      // Verificar si el producto existe en el carrito
-      if (!detalleCarrito) {
-        throw new HttpException('Producto no encontrado en el carrito', HttpStatus.NOT_FOUND);
-      }
-
-      // Eliminar el producto del carrito
-      await this.prisma.detalles_carrito.delete({
-        where: { Id_Detalle_Carrito: detalleCarrito.Id_Detalle_Carrito },
+    } else {
+      return this.prisma.detalles_carrito.create({
+        data: {
+          Id_Carrito: cart.Id_Carrito,
+          Id_Producto: productId,
+          Cantidad: quantity,
+          Precio: (await this.prisma.productos.findUnique({ where: { Id_Producto: productId } })).Precio,
+        },
       });
-
-      return { message: 'Producto eliminado exitosamente del carrito' };
-    } catch (error) {
-      console.error('Error al eliminar el producto del carrito:', error);
-      if (error instanceof HttpException) {
-        throw error; // Re-throw if it's a known exception
-      }
-      throw new HttpException(
-        `Error al eliminar el producto: ${error.message || 'Desconocido'}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
     }
   }
+
+  // Método para eliminar un producto del carrito
+  async removeProductFromCart(userId: number, productId: number): Promise<boolean> {
+    const userIdNumber = Number(userId);
+    const productIdNumber = Number(productId);
+
+    if (isNaN(userIdNumber) || isNaN(productIdNumber)) {
+      throw new Error('El ID del usuario o del producto no es válido');
+    }
+
+    const cart = await this.prisma.carrito.findFirst({
+      where: {
+        Id_Usuario: userIdNumber,
+        Estado: 'activo',
+      },
+    });
+
+    if (!cart) {
+      throw new Error('Carrito no encontrado');
+    }
+
+    const result = await this.prisma.detalles_carrito.deleteMany({
+      where: {
+        Id_Carrito: cart.Id_Carrito,
+        Id_Producto: productIdNumber,
+      },
+    });
+
+    return result.count > 0;
+  }
+
+
+
+  // Método para vaciar el carrito
+  async emptyCart(userId: number) {
+    // Asegúrate de que el userId sea un número
+    const validUserId = parseInt(userId.toString(), 10);
+  
+    const cart = await this.prisma.carrito.findFirst({
+      where: {
+        Id_Usuario: validUserId,  // Usamos el userId validado como número
+        Estado: "activo",
+      },
+    });
+  
+    if (!cart) {
+      throw new Error("Carrito no encontrado");
+    }
+  
+    // Vaciar el carrito
+    await this.prisma.carrito.updateMany({
+      where: {
+        Id_Usuario: validUserId,
+        Estado: "activo",
+      },
+      data: {
+        Estado: "activo",  // O el estado que corresponda
+      },
+    });
+  
+    return { message: 'Carrito vacío' };
+  }
+  
+  
 }

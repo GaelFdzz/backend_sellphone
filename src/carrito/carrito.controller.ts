@@ -1,49 +1,72 @@
-import { Controller, Get, Param, Delete, Post, Body } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, Delete } from '@nestjs/common';
 import { CarritoService } from './carrito.service';
-import { HttpException, HttpStatus } from '@nestjs/common';
 
-@Controller('carrito')
+@Controller('cart')
 export class CarritoController {
-  constructor(private readonly carritoService: CarritoService) { }
+  constructor(private readonly cartService: CarritoService) { }
 
-  // Endpoint para obtener el carrito de un usuario
-  @Get(':Id_Usuario')
-  async obtenerCarrito(@Param('Id_Usuario') Id_Usuario: number) {
-    try {
-      return await this.carritoService.obtenerCarrito(Id_Usuario);
-    } catch (error) {
-      console.error('Error en el controlador al obtener el carrito:', error);
-      throw error; // Lanzamos el error para que NestJS lo maneje adecuadamente
-    }
+  @Post('create')
+  createCart(@Body() body: { userId: number }) {
+    return this.cartService.createCart(body.userId);
   }
 
-  @Post(':Id_Usuario')
-  async agregarProductosAlCarrito(
-    @Param('Id_Usuario') Id_Usuario: number,
-    @Body() productos: any[]
+  @Get(':userId')
+  getCartItems(@Param('userId') userId: number) {
+    if (isNaN(userId)) {
+      throw new Error('El ID del usuario no es válido');
+    }
+    return this.cartService.getCartItems(userId);
+  }
+
+  @Post('add')
+  addProductToCart(
+    @Body() body: { userId: number; productId: number; quantity: number }
   ) {
-    try {
-      return await this.carritoService.agregarProductoAlCarrito(Id_Usuario, productos);
-    } catch (error) {
-      console.error('Error en el controlador al agregar productos al carrito:', error);
-      throw error;
-    }
+    return this.cartService.addProductToCart(
+      body.userId,
+      body.productId,
+      body.quantity
+    );
   }
 
-
-  // Endpoint para eliminar un producto del carrito
-  @Delete(':Id_Usuario/:Id_Producto')
-  async eliminarProducto(
-    @Param('Id_Usuario') Id_Usuario: number,
-    @Param('Id_Producto') Id_Producto: number,
+  @Delete(':userId/:productId')
+  async removeProductFromCart(
+    @Param('userId') userId: number,
+    @Param('productId') productId: string
   ) {
-    try {
-      return await this.carritoService.eliminarProducto(Id_Usuario, Id_Producto);
-    } catch (error) {
-      console.error('Error en el controlador al eliminar el producto:', error);
-      throw error; // Lanzamos el error para que NestJS lo maneje adecuadamente
+    console.log('userId:', userId, 'productId:', productId); // Depuración
+
+    // Si el productId es la palabra 'vaciar', se entiende como vaciar el carrito
+    if (productId === 'vaciar') {
+      // No se valida productId aquí, porque solo estamos vaciando el carrito
+      return this.emptyCart(userId);
     }
+
+    // Validación explícita de que ambos parámetros sean números válidos
+    if (isNaN(userId) || isNaN(Number(productId))) {
+      throw new Error('El ID del usuario o del producto no es válido');
+    }
+
+    const result = await this.cartService.removeProductFromCart(userId, Number(productId));
+    if (!result) {
+      throw new Error('Producto no encontrado');
+    }
+    return { message: 'Producto eliminado del carrito' };
   }
 
+  @Delete(':userId/vaciar')
+  async emptyCart(@Param('userId') userId: number) {
+    if (isNaN(userId)) {
+      throw new Error('El ID del usuario no es válido');
+    }
+
+    try {
+      await this.cartService.emptyCart(userId);
+      return { message: 'Carrito vacío' };
+    } catch (error) {
+      console.error('Error al vaciar el carrito:', error);
+      throw new Error('Error al vaciar el carrito');
+    }
+  }
 
 }

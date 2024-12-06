@@ -8,5 +8,6 @@ import { PrismaModule } from '../prisma/prisma.module';  // Importa PrismaModule
   imports: [PrismaModule],  // Asegúrate de tener PrismaModule importado
   controllers: [CarritoController],
   providers: [CarritoService],
+  exports: [CarritoService]
 })
 export class CarritoModule { }

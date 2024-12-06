@@ -4,12 +4,14 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { UnauthorizedException } from '@nestjs/common';
+import { CarritoService } from 'src/carrito/carrito.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private jwtService: JwtService,
     private prismaService: PrismaService,
+    private carritoService: CarritoService,
   ) { }
 
   // Método de login
@@ -49,6 +51,9 @@ export class AuthService {
     if (!passwordMatches) {
       throw new UnauthorizedException('Contraseña incorrecta');
     }
+
+    // Crear el carrito si no existe uno activo
+    await this.carritoService.createCart(user.Id_Usuario);
 
     // Generar el JWT con los datos del usuario
     const payload = { sub: user.Id_Usuario, email: user.Correo, role: user.Id_Rol };
