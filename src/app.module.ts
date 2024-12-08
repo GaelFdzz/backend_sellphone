@@ -15,6 +15,7 @@ import { PedidoController } from './pedido/pedido.controller';
 import { PedidoService } from './pedido/pedido.service';
 import { CarritoModule } from './carrito/carrito.module';
 import { PedidoModule } from './pedido/pedido.module';
+import { ProductosModule } from './productos/productos.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { PedidoModule } from './pedido/pedido.module';
     PrismaModule,
     CarritoModule,
     PedidoModule,
+    ProductosModule,
   ],
   controllers: [AppController, ProductosController, AuthController, CarritoController, PedidoController],
   providers: [AppService, PrismaService, ProductosService, AuthService, CarritoService, PedidoService],

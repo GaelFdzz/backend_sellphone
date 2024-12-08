@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -12,8 +12,7 @@ export class ProductosService {
       },
     });
 
-    // Validar y limpiar datos antes de enviarlos
-    return productos.map(producto => ({
+    return productos.map((producto) => ({
       ...producto,
       Descripcion: producto.Descripcion || 'Sin descripción disponible',
       Imagen: producto.Imagen || '/imagenes/iphone.png',
@@ -32,7 +31,6 @@ export class ProductosService {
       throw new NotFoundException('Producto no encontrado');
     }
 
-    // Validar y limpiar datos
     return {
       ...producto,
       Descripcion: producto.Descripcion || 'Sin descripción disponible',
@@ -43,11 +41,10 @@ export class ProductosService {
   }
 
   async obtenerResenasPorProducto(id: number) {
-    const resenas = await this.prisma.resenas.findMany({
+    return this.prisma.resenas.findMany({
       where: { Id_Producto: id },
       orderBy: { Fecha: 'desc' },
     });
-    return resenas;
   }
 
   async crearProducto(data: any) {
@@ -55,9 +52,9 @@ export class ProductosService {
       data: {
         Nombre: data.Nombre || 'Producto sin nombre',
         Descripcion: data.Descripcion || 'Sin descripción disponible',
-        Precio: data.Precio ? parseFloat(data.Precio) : 0,
-        Stock: data.Stock ? parseInt(data.Stock, 10) : 0,
-        Id_Categoria: data.Categoria ? parseInt(data.Categoria, 10) : null,
+        Precio: parseFloat(data.Precio) || 0,
+        Stock: parseInt(data.Stock, 10) || 0,
+        Id_Categoria: parseInt(data.Categoria, 10) || null,
         Imagen: data.Imagen || null,
       },
     });
@@ -69,23 +66,29 @@ export class ProductosService {
     });
 
     if (!productoExistente) {
-      throw new NotFoundException('Producto no encontrado');
+      throw new NotFoundException("Producto no encontrado");
+    }
+
+    const updatedData: any = {
+      Nombre: data.Nombre,
+      Descripcion: data.Descripcion || productoExistente.Descripcion,
+      Precio: parseFloat(data.Precio) || productoExistente.Precio,
+      Stock: parseInt(data.Stock, 10) || productoExistente.Stock,
+      Id_Categoria: parseInt(data.Categoria, 10) || productoExistente.Id_Categoria,
+    };
+
+    if (data.Imagen) {
+      updatedData.Imagen = data.Imagen;
     }
 
     return this.prisma.productos.update({
       where: { Id_Producto: id },
-      data: {
-        Nombre: data.Nombre,
-        Descripcion: data.Descripcion || 'Sin descripción disponible',
-        Precio: parseFloat(data.Precio) || 0,
-        Stock: parseInt(data.Stock, 10) || 0,
-        Id_Categoria: parseInt(data.Categoria, 10) || null,
-        Imagen: data.Imagen || null,
-      },
+      data: updatedData,
     });
   }
 
-  async eliminarProducto(id: number) {
+
+  async eliminarProducto(id: number, confirm: boolean = false) {
     const productoExistente = await this.prisma.productos.findUnique({
       where: { Id_Producto: id },
     });
@@ -94,8 +97,64 @@ export class ProductosService {
       throw new NotFoundException('Producto no encontrado');
     }
 
+    // Comprueba dependencias
+    const dependencias = {
+      resenas: await this.prisma.resenas.count({ where: { Id_Producto: id } }),
+      detallePedidos: await this.prisma.detalle_pedidos.count({
+        where: { Id_Producto: id },
+      }),
+      detallesCarrito: await this.prisma.detalles_carrito.count({
+        where: { Id_Producto: id },
+      }),
+      calificaciones: await this.prisma.calificacion_productos.count({
+        where: { Id_Producto: id },
+      }),
+    };
+
+    const dependenciasActivas = Object.entries(dependencias).filter(
+      ([, count]) => count > 0,
+    );
+
+    if (dependenciasActivas.length > 0) {
+      if (!confirm) {
+        const detalles = dependenciasActivas
+          .map(([tabla, count]) => `${tabla}: ${count}`)
+          .join(', ');
+        throw new BadRequestException(
+          `No se puede eliminar el producto porque tiene dependencias activas (${detalles}). Confirma antes de proceder.`,
+        );
+      }
+
+      // Si se confirma, elimina las dependencias
+      await Promise.all(
+        dependenciasActivas.map(([tabla]) => {
+          switch (tabla) {
+            case 'resenas':
+              return this.prisma.resenas.deleteMany({ where: { Id_Producto: id } });
+            case 'detallePedidos':
+              return this.prisma.detalle_pedidos.deleteMany({
+                where: { Id_Producto: id },
+              });
+            case 'detallesCarrito':
+              return this.prisma.detalles_carrito.deleteMany({
+                where: { Id_Producto: id },
+              });
+            case 'calificaciones':
+              return this.prisma.calificacion_productos.deleteMany({
+                where: { Id_Producto: id },
+              });
+          }
+        }),
+      );
+    }
+
+    // Elimina el producto
     return this.prisma.productos.delete({
       where: { Id_Producto: id },
     });
   }
+
+
+
+
 }
