@@ -126,18 +126,18 @@ export class CarritoService {
   async emptyCart(userId: number) {
     // Asegúrate de que el userId sea un número
     const validUserId = parseInt(userId.toString(), 10);
-  
+
     const cart = await this.prisma.carrito.findFirst({
       where: {
         Id_Usuario: validUserId,  // Usamos el userId validado como número
         Estado: "activo",
       },
     });
-  
+
     if (!cart) {
       throw new Error("Carrito no encontrado");
     }
-  
+
     // Vaciar el carrito
     await this.prisma.carrito.updateMany({
       where: {
@@ -148,9 +148,17 @@ export class CarritoService {
         Estado: "activo",  // O el estado que corresponda
       },
     });
-  
+
+    // Eliminar los productos del carrito
+    await this.prisma.detalles_carrito.deleteMany({
+      where: {
+        Id_Carrito: cart.Id_Carrito,
+      },
+    });
+
+
     return { message: 'Carrito vacío' };
   }
-  
-  
+
+
 }
