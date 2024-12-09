@@ -6,6 +6,7 @@ import * as path from 'path';
 import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { Multer } from 'multer'; // Importar Multer directamente
+import { CreateResenaDto } from './dto/create-resena.dto';
 
 @Controller('productos')
 export class ProductosController {
@@ -39,6 +40,8 @@ export class ProductosController {
     });
     return producto;
   }
+
+  
 
   @Get(':id')
   async obtenerProductoPorId(@Param('id') id: string) {
@@ -97,6 +100,23 @@ export class ProductosController {
   ) {
     const confirmValue = confirm === 'true';
     return this.productosService.eliminarProducto(id, confirmValue);
+  }
+
+  @Post(':id/resenas')
+  async crearResena(
+    @Param('id') id: string,
+    @Body() createResenaDto: CreateResenaDto,
+  ) {
+    const idNumerico = parseInt(id, 10);
+    if (isNaN(idNumerico)) {
+      throw new BadRequestException('El ID debe ser un número válido');
+    }
+
+    return this.productosService.crearResena({
+      Id_Producto: idNumerico,
+      ...createResenaDto,
+    });
+
   }
 
 

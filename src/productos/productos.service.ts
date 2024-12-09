@@ -1,5 +1,6 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { CreateResenaDto } from './dto/create-resena.dto';
 
 @Injectable()
 export class ProductosService {
@@ -19,6 +20,61 @@ export class ProductosService {
       Precio: producto.Precio || 0,
       Stock: producto.Stock || 0,
     }));
+  }
+
+
+
+
+  async verificarCompraUsuario(idProducto: number, idUsuario: number) {
+    const pedido = await this.prisma.pedidos.findFirst({
+      where: {
+        Id_Usuario: idUsuario, // Filtrar por el usuario que realizó el pedido
+        detalle_pedidos: {
+          some: { Id_Producto: idProducto }, // Verifica si el producto está en los detalles del pedido
+        },
+      },
+    });
+
+    return !!pedido; // Devuelve `true` si se encontró un pedido, `false` en caso contrario
+  }
+
+
+  async crearResena(data: { Id_Producto: number; Comentario: string; Calificacion: number; Usuario: string; EsSimulacion?: boolean }) {
+    console.log(data); // Esto debería mostrar el objeto recibido en el backend.
+
+    const usuario = await this.prisma.usuarios.findFirst({
+      where: { Nombre: data.Usuario },
+    });
+
+    if (!usuario) {
+      throw new BadRequestException("No se encontró el usuario asociado a la reseña.");
+    }
+
+    // Verificar si es una simulación
+    if (!data.EsSimulacion) {
+      const haComprado = await this.verificarCompraUsuario(data.Id_Producto, usuario.Id_Usuario);
+      if (!haComprado) {
+        throw new BadRequestException(
+          "Solo puedes dejar reseñas si compraste el producto. Verifica que has realizado la compra correctamente."
+        );
+      }
+    }
+
+    // Si llegó aquí, crea la reseña sin importar si es simulación o no
+    try {
+      const nuevaResena = await this.prisma.resenas.create({
+        data: {
+          Id_Producto: data.Id_Producto,
+          Comentario: data.Comentario,
+          Calificacion: data.Calificacion,
+          Usuario: data.Usuario,
+        },
+      });
+
+      return nuevaResena;
+    } catch (error) {
+      throw new InternalServerErrorException("Error al crear la reseña.");
+    }
   }
 
   async obtenerProductoPorId(id: number) {
@@ -46,6 +102,7 @@ export class ProductosService {
       orderBy: { Fecha: 'desc' },
     });
   }
+
 
   async crearProducto(data: any) {
     return this.prisma.productos.create({
@@ -153,7 +210,6 @@ export class ProductosService {
       where: { Id_Producto: id },
     });
   }
-
 
 
 

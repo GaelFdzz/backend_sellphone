@@ -16,6 +16,8 @@ import { PedidoService } from './pedido/pedido.service';
 import { CarritoModule } from './carrito/carrito.module';
 import { PedidoModule } from './pedido/pedido.module';
 import { ProductosModule } from './productos/productos.module';
+import { UsuariosService } from './usuarios/usuarios.service';
+import { UsuariosController } from './usuarios/usuarios.controller';
 
 @Module({
   imports: [
@@ -29,8 +31,8 @@ import { ProductosModule } from './productos/productos.module';
     PedidoModule,
     ProductosModule,
   ],
-  controllers: [AppController, ProductosController, AuthController, CarritoController, PedidoController],
-  providers: [AppService, PrismaService, ProductosService, AuthService, CarritoService, PedidoService],
+  controllers: [AppController, ProductosController, AuthController, CarritoController, PedidoController, UsuariosController],
+  providers: [AppService, PrismaService, ProductosService, AuthService, CarritoService, PedidoService, UsuariosService],
   exports: [PrismaService],
 })
 export class AppModule {}
