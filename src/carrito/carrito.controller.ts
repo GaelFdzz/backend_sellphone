@@ -68,5 +68,4 @@ export class CarritoController {
       throw new Error('Error al vaciar el carrito');
     }
   }
-
 }
