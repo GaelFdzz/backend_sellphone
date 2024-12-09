@@ -17,18 +17,7 @@ export class ProductosController {
     return this.productosService.obtenerProductos();
   }
 
-  @Post()
-  @UseInterceptors(
-    FileInterceptor('Imagen', {
-      storage: diskStorage({
-        destination: join(__dirname, '..', '..', 'public'),
-        filename: (req, file, callback) => {
-          const uniqueName = `${uuidv4()}-${file.originalname}`;
-          callback(null, uniqueName);
-        },
-      }),
-    }),
-  )
+
   async crearProducto(
     @UploadedFile() file: Multer.File,
     @Body() body: any,
@@ -41,7 +30,7 @@ export class ProductosController {
     return producto;
   }
 
-  
+
 
   @Get(':id')
   async obtenerProductoPorId(@Param('id') id: string) {
@@ -73,13 +62,13 @@ export class ProductosController {
           callback(null, uniqueName);
         },
       }),
-      limits: { fileSize: 5 * 1024 * 1024 },
+      limits: { fileSize: 5 * 1024 * 1024 }, // Limita el tamaño del archivo
     }),
   )
   async actualizarProducto(
     @Param('id') id: string,
     @Body() body: any,
-    @UploadedFile() file: any,
+    @UploadedFile() file?: Multer.File, // Archivo opcional
   ) {
     const idNumerico = parseInt(id, 10);
     if (isNaN(idNumerico)) {
@@ -88,6 +77,8 @@ export class ProductosController {
 
     if (file) {
       body.Imagen = `/imagenes/${file.filename}`;
+    } else {
+      delete body.Imagen; // Si no se envía un archivo, no actualices la imagen
     }
 
     return this.productosService.actualizarProducto(idNumerico, body);

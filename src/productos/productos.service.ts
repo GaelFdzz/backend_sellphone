@@ -118,6 +118,7 @@ export class ProductosService {
   }
 
   async actualizarProducto(id: number, data: any) {
+    // Buscar el producto existente
     const productoExistente = await this.prisma.productos.findUnique({
       where: { Id_Producto: id },
     });
@@ -126,23 +127,32 @@ export class ProductosService {
       throw new NotFoundException("Producto no encontrado");
     }
 
+    // Validar y preparar los datos
     const updatedData: any = {
-      Nombre: data.Nombre,
+      Nombre: data.Nombre || productoExistente.Nombre,
       Descripcion: data.Descripcion || productoExistente.Descripcion,
-      Precio: parseFloat(data.Precio) || productoExistente.Precio,
-      Stock: parseInt(data.Stock, 10) || productoExistente.Stock,
-      Id_Categoria: parseInt(data.Categoria, 10) || productoExistente.Id_Categoria,
+      Precio: data.Precio ? parseFloat(data.Precio) : productoExistente.Precio,
+      Stock: data.Stock ? parseInt(data.Stock, 10) : productoExistente.Stock,
+      Id_Categoria: data.Categoria
+        ? parseInt(data.Categoria, 10)
+        : productoExistente.Id_Categoria,
     };
 
+    // Solo actualizar la imagen si se proporciona una nueva
     if (data.Imagen) {
       updatedData.Imagen = data.Imagen;
     }
 
-    return this.prisma.productos.update({
-      where: { Id_Producto: id },
-      data: updatedData,
-    });
+    try {
+      return await this.prisma.productos.update({
+        where: { Id_Producto: id },
+        data: updatedData,
+      });
+    } catch (error) {
+      throw new InternalServerErrorException("Error al actualizar el producto");
+    }
   }
+
 
 
   async eliminarProducto(id: number, confirm: boolean = false) {
