@@ -22,9 +22,6 @@ export class ProductosService {
     }));
   }
 
-
-
-
   async verificarCompraUsuario(idProducto: number, idUsuario: number) {
     const pedido = await this.prisma.pedidos.findFirst({
       where: {
@@ -37,7 +34,6 @@ export class ProductosService {
 
     return !!pedido; // Devuelve `true` si se encontró un pedido, `false` en caso contrario
   }
-
 
   async crearResena(data: { Id_Producto: number; Comentario: string; Calificacion: number; Usuario: string; EsSimulacion?: boolean }) {
     console.log(data); // Esto debería mostrar el objeto recibido en el backend.
@@ -103,7 +99,6 @@ export class ProductosService {
     });
   }
 
-
   async crearProducto(data: any) {
     return this.prisma.productos.create({
       data: {
@@ -152,8 +147,6 @@ export class ProductosService {
       throw new InternalServerErrorException("Error al actualizar el producto");
     }
   }
-
-
 
   async eliminarProducto(id: number, confirm: boolean = false) {
     const productoExistente = await this.prisma.productos.findUnique({
@@ -220,7 +213,4 @@ export class ProductosService {
       where: { Id_Producto: id },
     });
   }
-
-
-
 }
